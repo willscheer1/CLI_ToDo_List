@@ -7,7 +7,7 @@ The user can interact with To-Do list with the following commands:
     -del: Delete's first item from the To-Do list. Optional index tag (-i) can be used to specify the index removed.
         (ex. del -2)
     -clear: Delete's all items from the To-Do list.
-    -export: Take's a file path and a file name and export's To-Do list as a .docx file. (ex. export your/path/here my_list)
+    -export: Take's a file path and export's To-Do list as a .docx file. (ex. export your/path/here/my_list)
     -help: Prints list of available commands to the console.
     -exit: Exit the program.
 """

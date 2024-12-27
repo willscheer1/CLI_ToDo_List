@@ -1,6 +1,10 @@
 """
+Create a To-Do list that saves as a text file and has the option of being exported as a.docx file.
 """
 import re
+from datetime import date
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 class ToDoList():
     
@@ -63,7 +67,7 @@ class ToDoList():
     -add: Add's item to the end of the To-Do list. Optional index tag (-i) can be used to specify the index where the item will be added. (ex. add -4 'Do the laundry')
     -del: Delete's first item from the To-Do list. Optional index tag (-i) can be used to specify the index removed. (ex. del -2)
     -clear: Delete's all items from the To-Do list.
-    -export: Take's a file path and a file name and export's To-Do list as a .docx file. (ex. export your/path/here my_list)
+    -export: Take's a file path and export's To-Do list as a .docx file. (ex. export your/path/here/my_list)
     -help: Prints list of available commands to the console.
     -exit: Exit the program."""
         )
@@ -92,8 +96,11 @@ class ToDoList():
         Parameters:
             index (int): Index where item is to be deleted.
         """
-        self.items.pop(index)
-        self.save_list()
+        if len(self.items) > 1:
+            self.items.pop(index)
+            self.save_list()
+        else:
+            print("No items in list.\n")
 
     def clear_list(self) -> None:
         """
@@ -102,10 +109,40 @@ class ToDoList():
         self.items = [self.items[0]]
         self.save_list()
 
-    def export(self) -> None:
+    def export(self, path: str) -> None:
         """
+        Exports .docx file to the specified path.
+
+        Parameters:
+            path (str): Validated path.
         """
-        pass
+        def format_docx() -> object:
+            """
+            Creates a .docx document with contents from the To-Do List.
+
+            Returns:
+                (obj) Document object containing To-Do list.
+            """
+            creation_date = date.today().strftime("%m/%d/%Y")
+            document = Document()
+            # heading
+            document.add_heading("To-Do List", level=1).paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            document.add_heading(f"Created on {creation_date}\n", level=2).paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            # add items
+            for item in self.items:
+                if item == "":
+                    continue
+                document.add_paragraph(item.capitalize(), style="List Number")
+
+            return document
+        
+        document = format_docx()
+        try:
+            document.save(f"{path}.docx")
+        except Exception as e:
+            print(f"File failed to save. Error: {e}\n")
+        else:
+            print("The document saved successfully.\n")
 
     def get_input(self) -> str:
         """
@@ -176,6 +213,42 @@ class ToDoList():
             print(f"Given index of {idx} is out of range.\n")
             return False
 
+        def validate_path(path: str) -> bool:
+            """
+            Validate's path's character length, naming restrictions, and given file name.
+            Does not validate if path exists.
+
+            Parameters:
+                path (str): User given path.
+            Returns:
+                (bool): True if path is considered valid, otherwise False.
+            """
+            # no empty
+            if not path:
+                print("'export' command requries a file path.\n")
+                return False
+            # not longer than 150 chars
+            if len(path) > 250:
+                print("Path strings are restricted to 250 characters.\n")
+                return False
+            # missing file name
+            if path[-1] == "/" or path[-1] == "\\":
+                print("Missing file name from path.\n")
+                return False
+            # validate file name
+            if path.find("/") >= 0:
+                file_name = path.split("/")[-1]
+            elif path.find("\\") >= 0:
+                file_name = path.split("\\")[-1]
+            # only file name given (save in current directory)
+            else:
+                file_name = path
+            # no invalid characters (\, /, :, *, ?, ", <, >, |)
+            if inv_char := re.search(r"[\\/:*?\"<>|]", file_name):
+                print(f"Invalid character '{inv_char.group()}' in file name.\n")
+                return False
+            
+            return True
 
         split_str = input_str.split(" ")
         # check keyword
@@ -253,7 +326,17 @@ class ToDoList():
             }
         
         # 'export' command
-         
+        if keyword == "export":
+            path = " ".join(split_str).strip()
+            if not validate_path(path):
+                return {"isValid": False}
+        
+            return {
+                "isValid": True,
+                "keyword": keyword,
+                "path": path
+            }
+            
     def execute_command(self, command: dict) -> None:
         """
         Perform's actions based on given command.
@@ -277,12 +360,10 @@ class ToDoList():
             self.add_item(command["item"], command["index"])
         # delete
         elif keyword == "del":
-            if len(self.items) == 1:
-                print("No items in list.\n")
-            else:
-                self.delete_item(command["index"])
+            self.delete_item(command["index"])
+        # export
         elif keyword == "export":
-            pass
+            self.export(command["path"])
 
     def run(self) -> None:
         """
